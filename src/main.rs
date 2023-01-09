@@ -19,6 +19,9 @@ struct Args {
 
     /// Path to instruction file
     file: String,
+
+    #[arg(long, default_value_t = false)]
+    debug: bool
 }
 
 fn main() -> Res {
@@ -35,6 +38,10 @@ fn main() -> Res {
 
     let mut machine = Machine::new(instructions);
 
+    if args.debug {
+        machine.debug = true;
+    }
+
     if args.io {
         run_io(machine)?;
     } else {
@@ -42,27 +49,4 @@ fn main() -> Res {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::asm::compile;
-
-    use super::*;
-    
-    #[test]
-    fn run_asm() {
-        let asm: Vec<String> = r#"
-            (LOOP)
-            @SCREEN // set address register to top-left pixel
-            M=1     // blacken pixel
-            @LOOP
-            0;JMP
-        "#.lines().map(|x| x.into()).collect();
-
-        let instructions = compile(asm).unwrap();
-
-        let machine = Machine::new(instructions);
-        run_io(machine).unwrap();
-    }
 }

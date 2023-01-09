@@ -10,6 +10,7 @@ pub struct Machine {
     pub memory: [HackWord; MEMORY_SIZE],
     register_a: HackWord,
     register_d: HackWord,
+    pub debug: bool
 }
 
 impl Machine {
@@ -20,6 +21,7 @@ impl Machine {
             memory: [HackWord::default(); MEMORY_SIZE],
             register_a: HackWord::default(),
             register_d: HackWord::default(),
+            debug: false
         }
     }
 
@@ -43,6 +45,9 @@ impl Machine {
     }
 
     fn step_ins(&mut self, current: Instruction) {
+        if self.debug {
+            println!("{current:?}");
+        }
         match current {
             Instruction::A(dest) => {
                 self.register_a = HackWord(dest as i16);
@@ -82,6 +87,7 @@ impl Machine {
                         Comp::DOrA => d | a,
                     }
                 };
+                println!("value: {value:?}");
 
                 if dest.a {
                     self.register_a = value;
@@ -94,7 +100,7 @@ impl Machine {
                 }
 
                 if jump.should_jump(value) {
-                    self.current_instruction = value;
+                    self.current_instruction = self.register_a;
                 } else {
                     self.current_instruction = self.current_instruction + HackWord::one();
                 }

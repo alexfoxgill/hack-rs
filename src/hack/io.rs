@@ -27,7 +27,7 @@ pub fn run_io(mut machine: Machine) -> Res<Machine> {
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(Duration::from_micros(16600)));
 
-    while window.is_open() && !window.is_key_down(Key::Escape) && machine.step()? {
+    while window.is_open() && machine.step()? {
         write_to_screen(&machine, &mut buffer);
         update_keyboard(&window, &mut machine);
         window.update_with_buffer(&buffer, SCREEN_WIDTH, SCREEN_HEIGHT)?;
