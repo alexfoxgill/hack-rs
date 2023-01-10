@@ -178,7 +178,11 @@ impl FromStr for AsmLine {
     }
 }
 
-pub fn compile<'a>(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, Option<AsmDebug>)> {
+pub fn compile_lines(str: &str) -> Res<Vec<HackWord>> {
+    Ok(compile(str.lines().map(|x| x.into()).collect(), false)?.0)
+}
+
+pub fn compile(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, Option<AsmDebug>)> {
     let mut memory = HashMap::from([
         ("R0".into(), 0),
         ("R1".into(), 1),
@@ -346,5 +350,61 @@ mod tests {
 
             assert_eq!(machine.memory[2], HackWord(a * b))
         }
+    }
+
+    #[test]
+    fn example_compilation() {
+        let asm = r#"
+            // Adds 1 + ... + 100
+                @i
+                M=1    // i=1
+                @sum
+                M=0    // sum=0
+            (LOOP)
+                @i
+                D=M    // D=i
+                @100
+                D=D-A  // D=i-100
+                @END
+                D;JGT  // if (i-100)>0 goto END
+                @i
+                D=M    // D=i
+                @sum
+                M=D+M  // sum=sum+i
+                @i
+                M=M+1  // i=i+1
+                @LOOP
+                0;JMP  // goto LOOP
+            (END)
+                @END
+                0;JMP  // infinite loop
+        "#;
+
+        let expected: Vec<HackWord> = vec![
+            "0000000000010000",
+            "1110111111001000",
+            "0000000000010001",
+            "1110101010001000",
+            "0000000000010000",
+            "1111110000010000",
+            "0000000001100100",
+            "1110010011010000",
+            "0000000000010010",
+            "1110001100000001",
+            "0000000000010000",
+            "1111110000010000",
+            "0000000000010001",
+            "1111000010001000",
+            "0000000000010000",
+            "1111110111001000",
+            "0000000000000100",
+            "1110101010000111",
+            "0000000000010010",
+            "1110101010000111"
+        ].iter().map(|x| x.parse().unwrap()).collect();
+
+        let res = compile_lines(asm).unwrap();
+
+        assert_eq!(res, expected);
     }
 }
