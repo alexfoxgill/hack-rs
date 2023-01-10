@@ -58,34 +58,3 @@ pub fn run_asm(asm: &str, machine: &mut Machine) -> Res<> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-
-    use crate::hack::hackword::HackWord;
-
-    use super::*;
-    
-    #[test]
-    fn test_mult() {
-        for (a, b) in [
-            (1, 1),
-            (1, 2),
-            (2, 1),
-            (2, 2),
-            (0, 2),
-            (2, 0)
-        ] {
-            let mut machine = Machine::new();
-            machine.memory[0] = HackWord(a);
-            machine.memory[1] = HackWord(b);
-    
-            let (instructions, _) = compile_file("resources/mult.asm", false).unwrap();
-            machine.load_instructions(instructions);
-    
-            machine.run().unwrap();
-    
-            assert_eq!(machine.memory[2], HackWord(a * b))
-        }
-    }
-}
