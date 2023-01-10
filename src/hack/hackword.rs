@@ -133,4 +133,17 @@ mod tests {
             assert_eq!(res, expected)
         }
     }
+
+    #[test]
+    fn bits() {
+        for (input, bit) in [
+            (i16::MIN, 0),
+            (0b0100_0000_0000_0000, 1),
+            (0b0000_0000_0000_0001, 15),
+        ] {
+            let word = HackWord(input);
+
+            assert!(word.bit(bit))
+        }
+    }
 }

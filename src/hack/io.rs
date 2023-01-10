@@ -1,5 +1,8 @@
 extern crate minifb;
-use std::{path::Path, time::Duration};
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use minifb::{Key, Window, WindowOptions};
 
@@ -27,9 +30,16 @@ pub fn run_io(mut machine: Machine) -> Res<Machine> {
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(Duration::from_micros(16600)));
 
-    while window.is_open() && machine.step()? {
+    while window.is_open() {
+        let start = Instant::now();
+        while (Instant::now() - start).as_millis() < 100 {
+            update_keyboard(&window, &mut machine);
+            if !machine.step()? {
+                return Ok(machine);
+            }
+        }
+
         write_to_screen(&machine, &mut buffer);
-        update_keyboard(&window, &mut machine);
         window.update_with_buffer(&buffer, SCREEN_WIDTH, SCREEN_HEIGHT)?;
     }
 

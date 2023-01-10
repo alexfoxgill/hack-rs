@@ -32,10 +32,10 @@ pub struct Dest {
     pub m: bool,
 }
 
-
 #[derive(Clone, Copy, Eq, PartialEq, Debug, Default)]
 pub enum Jump {
-    #[default] Null,
+    #[default]
+    Null,
     JGT,
     JEQ,
     JGE,

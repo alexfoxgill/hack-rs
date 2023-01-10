@@ -1,3 +1,6 @@
+use std::collections::VecDeque;
+
+use crate::asm::AsmDebug;
 use crate::common::*;
 use crate::hackword::*;
 use crate::instruction::*;
@@ -10,19 +13,31 @@ pub struct Machine {
     pub memory: [HackWord; MEMORY_SIZE],
     register_a: HackWord,
     register_d: HackWord,
-    pub debug: bool
+    instruction_history: VecDeque<HackWord>,
+    asm_debug: Option<AsmDebug>,
 }
 
 impl Machine {
-    pub fn new(instructions: Vec<HackWord>) -> Self {
+    pub fn new(instructions: Vec<HackWord>, asm_debug: Option<AsmDebug>) -> Self {
         Self {
             instructions,
             current_instruction: HackWord::default(),
             memory: [HackWord::default(); MEMORY_SIZE],
             register_a: HackWord::default(),
             register_d: HackWord::default(),
-            debug: false
+            instruction_history: VecDeque::with_capacity(16),
+            asm_debug,
         }
+    }
+
+    fn set_instruction(&mut self, instruction: HackWord) {
+        if self.instruction_history.len() == self.instruction_history.capacity() {
+            self.instruction_history.pop_back();
+        }
+        self.instruction_history
+            .push_front(self.current_instruction);
+
+        self.current_instruction = instruction;
     }
 
     fn m(&self) -> HackWord {
@@ -30,6 +45,19 @@ impl Machine {
     }
 
     fn m_mut(&mut self) -> &mut HackWord {
+        let dest = self.register_a.to_usize();
+        if dest >= self.memory.len() {
+            println!("Ins: {:?}", self.ins());
+            println!("A: {:?}", self.register_a);
+            println!("D: {:?}", self.register_d);
+
+            for &w in self.instruction_history.iter() {
+                let ins: Res<Instruction> = self.instructions[w.to_usize()].try_into();
+                println!("Ins {}: {ins:?}", w.to_usize());
+            }
+
+            panic!("value of A is outside of memory")
+        }
         &mut self.memory[self.register_a.to_usize()]
     }
 
@@ -45,13 +73,10 @@ impl Machine {
     }
 
     fn step_ins(&mut self, current: Instruction) {
-        if self.debug {
-            println!("{current:?}");
-        }
         match current {
             Instruction::A(dest) => {
                 self.register_a = HackWord(dest as i16);
-                self.current_instruction = self.current_instruction + HackWord::one();
+                self.set_instruction(self.current_instruction + HackWord::one());
             }
             Instruction::C {
                 should_deref,
@@ -87,7 +112,6 @@ impl Machine {
                         Comp::DOrA => d | a,
                     }
                 };
-                println!("value: {value:?}");
 
                 if dest.a {
                     self.register_a = value;
@@ -99,11 +123,15 @@ impl Machine {
                     *self.m_mut() = value;
                 }
 
-                if jump.should_jump(value) {
-                    self.current_instruction = self.register_a;
+                self.set_instruction(if jump.should_jump(value) {
+                    if let Some(debug) = &self.asm_debug {
+                        let instruction = self.register_a.to_usize();
+                        println!("Jumping to line {:?}", debug.line_mappings[&instruction]);
+                    }
+                    self.register_a
                 } else {
-                    self.current_instruction = self.current_instruction + HackWord::one();
-                }
+                    self.current_instruction + HackWord::one()
+                })
             }
         }
     }
@@ -118,7 +146,7 @@ impl Machine {
     }
 
     pub fn run(&mut self) -> Res {
-        while self.step()? { }
+        while self.step()? {}
         Ok(())
     }
 }

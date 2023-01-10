@@ -9,6 +9,8 @@ pub fn err(e: &str) -> Error {
 
 pub fn read_lines(path: impl AsRef<Path>) -> Res<Vec<String>> {
     let file = File::open(path)?;
-    let lines = std::io::BufReader::new(file).lines().map(|x| x.map_err(|e| e.into()));
+    let lines = std::io::BufReader::new(file)
+        .lines()
+        .map(|x| x.map_err(|e| e.into()));
     lines.collect()
 }
