@@ -1,4 +1,3 @@
-use crate::asm::AsmDebug;
 use crate::common::*;
 use crate::hackword::*;
 use crate::instruction::*;
@@ -14,9 +13,9 @@ pub struct Machine {
 }
 
 impl Machine {
-    pub fn new(instructions: Vec<HackWord>, _asm_debug: Option<AsmDebug>) -> Self {
+    pub fn new() -> Self {
         Self {
-            instructions,
+            instructions: Vec::new(),
             current_instruction: HackWord::default(),
             memory: [HackWord::default(); MEMORY_SIZE],
             register_a: HackWord::default(),
@@ -119,5 +118,9 @@ impl Machine {
     pub fn run(&mut self) -> Res {
         while self.step()? {}
         Ok(())
+    }
+
+    pub fn load_instructions(&mut self, instructions: Vec<HackWord>) {
+        self.instructions = instructions;
     }
 }
