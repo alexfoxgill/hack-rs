@@ -183,7 +183,7 @@ pub fn compile_lines(str: &str) -> Res<Vec<HackWord>> {
 }
 
 pub fn compile(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, Option<AsmDebug>)> {
-    let mut memory = HashMap::from([
+    let mut symbols = HashMap::from([
         ("R0".into(), 0),
         ("R1".into(), 1),
         ("R2".into(), 2),
@@ -222,7 +222,7 @@ pub fn compile(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, Optio
     for asm in &parsed {
         match &asm.instruction {
             Asm::Label(l) => {
-                memory.insert(l.into(), i);
+                symbols.insert(l.into(), i);
             }
             Asm::EmptyLine => (),
             _ => {
@@ -244,7 +244,7 @@ pub fn compile(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, Optio
                 if debug {
                     line_mappings.insert(hashwords.len(), (i + 1, line));
                 }
-                let &mut n = memory.entry(v).or_insert_with(|| {
+                let &mut n = symbols.entry(v).or_insert_with(|| {
                     let r = ram;
                     ram += 1;
                     r
@@ -276,7 +276,7 @@ pub fn compile(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, Optio
 
     let debug_info = if debug {
         Some(AsmDebug {
-            memory,
+            symbols,
             line_mappings,
         })
     } else {
@@ -287,7 +287,7 @@ pub fn compile(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, Optio
 }
 
 pub struct AsmDebug {
-    pub memory: HashMap<String, u16>,
+    pub symbols: HashMap<String, u16>,
     pub line_mappings: HashMap<usize, (usize, String)>,
 }
 
