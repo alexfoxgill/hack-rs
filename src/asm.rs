@@ -31,7 +31,7 @@ pub enum Asm {
 #[derive(Clone, Eq, PartialEq, Debug)]
 struct AsmLine {
     instruction: Asm,
-    comment: Option<String>
+    comment: Option<String>,
 }
 
 pub fn compile_file(file: impl AsRef<Path>, debug: bool) -> Res<(Vec<HackWord>, Option<AsmDebug>)> {
@@ -46,130 +46,134 @@ impl FromStr for AsmLine {
         let line = line.trim();
 
         Ok(AsmLine {
-            comment: if comment == "" { None } else { Some(comment.into()) },
-            instruction: 
-                if line.is_empty() {
-                    Asm::EmptyLine
-                } else if let Some(addr) = line.strip_prefix('@') {
-                    Asm::LoadAddress(if let Ok(num) = addr.trim().parse() {
-                        if num > 32767 {
-                            return Err(
-                                format!("Constant number '{num}' cannot be greater than 32767").into(),
-                            );
-                        }
-                        MemoryLocation::Numeric(num)
-                    } else {
-                        MemoryLocation::Variable(addr.trim().into())
-                    })
-                } else if let Some(label) = line.strip_prefix('(').and_then(|s| s.strip_suffix(')')) {
-                    Asm::Label(label.trim().into())
-                } else {
-                    let eq = line.chars().position(|c| c == '=');
-                    let semi = line.chars().position(|c| c == ';');
-
-                    let (dest_str, comp, jump) = match (eq, semi) {
-                        (None, None) => (None, line, None),
-                        (None, Some(semi)) => (None, &line[..semi], Some(&line[semi + 1..])),
-                        (Some(eq), None) => (Some(&line[..eq]), &line[eq + 1..], None),
-                        (Some(eq), Some(semi)) => (
-                            Some(&line[..eq]),
-                            &line[eq + 1..semi],
-                            Some(&line[semi + 1..]),
-                        ),
-                    };
-
-                    let mut dest = Dest::default();
-                    for c in dest_str.iter().flat_map(|d| d.chars()) {
-                        match c {
-                            'A' => dest.a = true,
-                            'D' => dest.d = true,
-                            'M' => dest.m = true,
-                            _ => return Err(format!("Unrecognised destination '{c}'").into()),
-                        }
+            comment: if comment == "" {
+                None
+            } else {
+                Some(comment.into())
+            },
+            instruction: if line.is_empty() {
+                Asm::EmptyLine
+            } else if let Some(addr) = line.strip_prefix('@') {
+                Asm::LoadAddress(if let Ok(num) = addr.trim().parse() {
+                    if num > 32767 {
+                        return Err(format!(
+                            "Constant number '{num}' cannot be greater than 32767"
+                        )
+                        .into());
                     }
+                    MemoryLocation::Numeric(num)
+                } else {
+                    MemoryLocation::Variable(addr.trim().into())
+                })
+            } else if let Some(label) = line.strip_prefix('(').and_then(|s| s.strip_suffix(')')) {
+                Asm::Label(label.trim().into())
+            } else {
+                let eq = line.chars().position(|c| c == '=');
+                let semi = line.chars().position(|c| c == ';');
 
-                    let mut should_deref = false;
-                    let comp = match comp {
-                        "0" => Comp::Zero,
-                        "1" => Comp::One,
-                        "-1" => Comp::MinusOne,
-                        "D" => Comp::D,
-                        "A" => Comp::A,
-                        "M" => {
-                            should_deref = true;
-                            Comp::A
-                        }
-                        "!D" => Comp::NotD,
-                        "!A" => Comp::NotA,
-                        "!M" => {
-                            should_deref = true;
-                            Comp::NotA
-                        }
-                        "-D" => Comp::MinusD,
-                        "-A" => Comp::MinusA,
-                        "-M" => {
-                            should_deref = true;
-                            Comp::MinusA
-                        }
-                        "D+1" => Comp::DPlus1,
-                        "A+1" => Comp::APlus1,
-                        "M+1" => {
-                            should_deref = true;
-                            Comp::APlus1
-                        }
-                        "D-1" => Comp::DMinus1,
-                        "A-1" => Comp::AMinus1,
-                        "M-1" => {
-                            should_deref = true;
-                            Comp::AMinus1
-                        }
-                        "D+A" => Comp::DPlusA,
-                        "D+M" => {
-                            should_deref = true;
-                            Comp::DPlusA
-                        }
-                        "D-A" => Comp::DMinusA,
-                        "D-M" => {
-                            should_deref = true;
-                            Comp::DMinusA
-                        }
-                        "A-D" => Comp::AMinusD,
-                        "M-D" => {
-                            should_deref = true;
-                            Comp::AMinusD
-                        }
-                        "D&A" => Comp::DAndA,
-                        "D&M" => {
-                            should_deref = true;
-                            Comp::DAndA
-                        }
-                        "D|A" => Comp::DOrA,
-                        "D|M" => {
-                            should_deref = true;
-                            Comp::DOrA
-                        }
-                        _ => return Err(format!("Unrecognised comp '{comp}'").into()),
-                    };
+                let (dest_str, comp, jump) = match (eq, semi) {
+                    (None, None) => (None, line, None),
+                    (None, Some(semi)) => (None, &line[..semi], Some(&line[semi + 1..])),
+                    (Some(eq), None) => (Some(&line[..eq]), &line[eq + 1..], None),
+                    (Some(eq), Some(semi)) => (
+                        Some(&line[..eq]),
+                        &line[eq + 1..semi],
+                        Some(&line[semi + 1..]),
+                    ),
+                };
 
-                    let jump = match jump {
-                        None => Jump::Null,
-                        Some("JGT") => Jump::JGT,
-                        Some("JEQ") => Jump::JEQ,
-                        Some("JGE") => Jump::JGE,
-                        Some("JLT") => Jump::JLT,
-                        Some("JNE") => Jump::JNE,
-                        Some("JLE") => Jump::JLE,
-                        Some("JMP") => Jump::JMP,
-                        Some(x) => return Err(format!("Unrecognised jump '{x}'").into()),
-                    };
-
-                    Asm::Compute {
-                        dest,
-                        should_deref,
-                        comp,
-                        jump,
+                let mut dest = Dest::default();
+                for c in dest_str.iter().flat_map(|d| d.chars()) {
+                    match c {
+                        'A' => dest.a = true,
+                        'D' => dest.d = true,
+                        'M' => dest.m = true,
+                        _ => return Err(format!("Unrecognised destination '{c}'").into()),
                     }
                 }
+
+                let mut should_deref = false;
+                let comp = match comp {
+                    "0" => Comp::Zero,
+                    "1" => Comp::One,
+                    "-1" => Comp::MinusOne,
+                    "D" => Comp::D,
+                    "A" => Comp::A,
+                    "M" => {
+                        should_deref = true;
+                        Comp::A
+                    }
+                    "!D" => Comp::NotD,
+                    "!A" => Comp::NotA,
+                    "!M" => {
+                        should_deref = true;
+                        Comp::NotA
+                    }
+                    "-D" => Comp::MinusD,
+                    "-A" => Comp::MinusA,
+                    "-M" => {
+                        should_deref = true;
+                        Comp::MinusA
+                    }
+                    "D+1" => Comp::DPlus1,
+                    "A+1" => Comp::APlus1,
+                    "M+1" => {
+                        should_deref = true;
+                        Comp::APlus1
+                    }
+                    "D-1" => Comp::DMinus1,
+                    "A-1" => Comp::AMinus1,
+                    "M-1" => {
+                        should_deref = true;
+                        Comp::AMinus1
+                    }
+                    "D+A" => Comp::DPlusA,
+                    "D+M" => {
+                        should_deref = true;
+                        Comp::DPlusA
+                    }
+                    "D-A" => Comp::DMinusA,
+                    "D-M" => {
+                        should_deref = true;
+                        Comp::DMinusA
+                    }
+                    "A-D" => Comp::AMinusD,
+                    "M-D" => {
+                        should_deref = true;
+                        Comp::AMinusD
+                    }
+                    "D&A" => Comp::DAndA,
+                    "D&M" => {
+                        should_deref = true;
+                        Comp::DAndA
+                    }
+                    "D|A" => Comp::DOrA,
+                    "D|M" => {
+                        should_deref = true;
+                        Comp::DOrA
+                    }
+                    _ => return Err(format!("Unrecognised comp '{comp}'").into()),
+                };
+
+                let jump = match jump {
+                    None => Jump::Null,
+                    Some("JGT") => Jump::JGT,
+                    Some("JEQ") => Jump::JEQ,
+                    Some("JGE") => Jump::JGE,
+                    Some("JLT") => Jump::JLT,
+                    Some("JNE") => Jump::JNE,
+                    Some("JLE") => Jump::JLE,
+                    Some("JMP") => Jump::JMP,
+                    Some(x) => return Err(format!("Unrecognised jump '{x}'").into()),
+                };
+
+                Asm::Compute {
+                    dest,
+                    should_deref,
+                    comp,
+                    jump,
+                }
+            },
         })
     }
 }
@@ -215,7 +219,7 @@ pub fn compile<'a>(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, O
         match &asm.instruction {
             Asm::Label(l) => {
                 memory.insert(l.into(), i);
-            },
+            }
             Asm::EmptyLine => (),
             _ => {
                 i += 1;
@@ -228,13 +232,13 @@ pub fn compile<'a>(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, O
         match asm.instruction {
             Asm::LoadAddress(MemoryLocation::Numeric(n)) => {
                 if debug {
-                    line_mappings.insert(hashwords.len(), (i+1, line));
+                    line_mappings.insert(hashwords.len(), (i + 1, line));
                 }
                 hashwords.push(Instruction::A(n).into());
             }
             Asm::LoadAddress(MemoryLocation::Variable(v)) => {
                 if debug {
-                    line_mappings.insert(hashwords.len(), (i+1, line));
+                    line_mappings.insert(hashwords.len(), (i + 1, line));
                 }
                 let &mut n = memory.entry(v).or_insert_with(|| {
                     let r = ram;
@@ -250,7 +254,7 @@ pub fn compile<'a>(asm_lines: Vec<String>, debug: bool) -> Res<(Vec<HackWord>, O
                 jump,
             } => {
                 if debug {
-                    line_mappings.insert(hashwords.len(), (i+1, line));
+                    line_mappings.insert(hashwords.len(), (i + 1, line));
                 }
                 hashwords.push(
                     Instruction::C {
@@ -327,26 +331,19 @@ mod tests {
     }
 
     use crate::hack::{hackword::HackWord, machine::Machine};
-    
+
     #[test]
     fn test_mult() {
-        for (a, b) in [
-            (1, 1),
-            (1, 2),
-            (2, 1),
-            (2, 2),
-            (0, 2),
-            (2, 0)
-        ] {
+        for (a, b) in [(1, 1), (1, 2), (2, 1), (2, 2), (0, 2), (2, 0)] {
             let mut machine = Machine::new();
             machine.memory[0] = HackWord(a);
             machine.memory[1] = HackWord(b);
-    
+
             let (instructions, _) = compile_file("resources/mult.asm", false).unwrap();
             machine.load_instructions(instructions);
-    
+
             machine.run().unwrap();
-    
+
             assert_eq!(machine.memory[2], HackWord(a * b))
         }
     }

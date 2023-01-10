@@ -48,7 +48,7 @@ fn main() -> Res {
     Ok(())
 }
 
-pub fn run_asm(asm: &str, machine: &mut Machine) -> Res<> {
+pub fn run_asm(asm: &str, machine: &mut Machine) -> Res {
     use crate::asm::compile;
     let (instructions, _) = compile(asm.lines().map(|x| x.into()).collect(), false)?;
 

@@ -1,4 +1,4 @@
-// multiplies the two values in R0 and R1, saving the result in R2
+// multiplies the two (non-negative) values in R0 and R1, saving the result in R2
 
 @R0
 D=M
