@@ -13,6 +13,12 @@ pub struct Machine {
 }
 
 impl Machine {
+    pub fn from_instructions(instructions: Vec<HackWord>) -> Self {
+        let mut machine = Self::new();
+        machine.load_instructions(instructions);
+        machine
+    }
+
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
